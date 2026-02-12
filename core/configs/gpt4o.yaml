@@ -1,0 +1,79 @@
+# ======================================
+# TITANCORE GPT-4o CONFIGURATION
+# ======================================
+
+model:
+  name: titancore-gpt4o
+  vocab_size: 50257
+  block_size: 8192
+  n_layer: 48
+  n_head: 64
+  n_embd: 4096
+  rotary_emb: true
+  rope_theta: 1000000
+
+attention:
+  type: flash_v2
+  causal: true
+  kv_cache: paged
+  sliding_window: 4096
+
+mlp:
+  hidden_mult: 4
+  activation: swiglu
+
+parallelism:
+  tensor: 4
+  pipeline: 2
+  data: 8
+  fsdp: true
+
+quantization:
+  enabled: true
+  weight: int4
+  activation: fp8
+  kv_cache: fp16
+
+runtime:
+  max_batch: 256
+  continuous_batching: true
+  speculative_decoding: true
+  prefix_cache: true
+  stream_count: 8
+
+vision:
+  enabled: true
+  encoder: vit_large
+  image_size: 1024
+
+audio:
+  enabled: true
+  whisper_backend: turbo
+
+retrieval:
+  enabled: true
+  faiss_gpu: true
+  top_k: 8
+
+safety:
+  moderation: true
+  jailbreak_detection: true
+  rate_limit_rps: 200
+
+api:
+  host: 0.0.0.0
+  port: 8080
+  auth: jwt
+
+monitoring:
+  prometheus: true
+  metrics_interval: 5
+
+logging:
+  level: info
+  trace_cuda: false
+
+system:
+  cuda_graphs: true
+  nvlink: true
+  numa_affinity: true

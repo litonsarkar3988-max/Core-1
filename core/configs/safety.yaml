@@ -1,0 +1,74 @@
+# ==========================================
+# TITANCORE AI SAFETY CONFIG (GPT-4o LEVEL)
+# ==========================================
+
+safety:
+
+  enabled: true
+  strict_mode: true
+
+  jailbreak:
+    enabled: true
+    detection_model: transformer
+    threshold: 0.82
+    block_on_detect: true
+    log_attempts: true
+
+  prompt_injection:
+    enabled: true
+    regex_scan: true
+    embedding_similarity: true
+    similarity_threshold: 0.85
+
+  moderation:
+    enabled: true
+    categories:
+      violence: true
+      hate: true
+      self_harm: true
+      sexual: true
+      drugs: true
+    action: block
+
+  pii_protection:
+    enabled: true
+    redact:
+      - phone
+      - email
+      - address
+      - aadhaar
+      - pan
+
+  hallucination:
+    enabled: true
+    confidence_floor: 0.35
+    require_sources: false
+
+  rate_limit:
+    enabled: true
+    requests_per_minute: 60
+    tokens_per_minute: 40000
+    ban_on_abuse: true
+
+  output_filter:
+    enabled: true
+    profanity: true
+    unsafe_links: true
+    code_execution: false
+
+  child_safety:
+    enabled: true
+    under_18_mode: true
+    block_nsfw: true
+
+  logging:
+    violations: true
+    audit_trail: true
+
+  response_policy:
+    on_violation: refuse
+    fallback_message: "Sorry — this request violates safety policy."
+
+monitoring:
+  alert_on_attack: true
+  export_prometheus: true

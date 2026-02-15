@@ -4,11 +4,11 @@
 
 model:
   name: titancore-gpt4o
-  vocab_size: 50257
+  vocab_size: 400000
   block_size: 8192
-  n_layer: 48
-  n_head: 64
-  n_embd: 4096
+  n_layer: 120
+  n_head: 128
+  n_embd: 16384
   rotary_emb: true
   rope_theta: 1000000
 

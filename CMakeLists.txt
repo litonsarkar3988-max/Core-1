@@ -2,77 +2,75 @@ cmake_minimum_required(VERSION 3.20)
 project(TitanCore LANGUAGES CXX CUDA)
 
 # -------------------------------
-# 1. C++ Standard
+# 1. C++ Standard & CUDA Architecture
 # -------------------------------
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_CUDA_ARCHITECTURES "80;86;90") # A100/H100 support
 
 # -------------------------------
-# 2. Torch / LibTorch Path
+# 2. Find Dependencies (Torch, CUDA, MPI, NCCL)
 # -------------------------------
-# ধরো LibTorch system-wide installed
 find_package(Torch REQUIRED)
+find_package(CUDA REQUIRED)
+find_package(MPI REQUIRED)
+
+# NCCL Library
+find_library(NCCL_LIBRARY nccl REQUIRED)
+
 message(STATUS "Found LibTorch at ${Torch_DIR}")
+message(STATUS "Found CUDA at ${CUDA_TOOLKIT_ROOT_DIR}")
 
 # -------------------------------
-# 3. CUDA Support
+# 3. Source Files (Using Core-1/ structure)
 # -------------------------------
-enable_language(CUDA)
-set(CMAKE_CUDA_STANDARD 14)
-set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-
-# -------------------------------
-# 4. Source Files
-# -------------------------------
-file(GLOB_RECURSE CORE_SRC
-    "${CMAKE_SOURCE_DIR}/titancore/core/*.cpp"
-    "${CMAKE_SOURCE_DIR}/titancore/core/model/*.cpp"
-    "${CMAKE_SOURCE_DIR}/titancore/core/transformer/*.cpp"
-    "${CMAKE_SOURCE_DIR}/titancore/core/quant/*.cpp"
-    "${CMAKE_SOURCE_DIR}/titancore/audio/*.cpp"
-    "${CMAKE_SOURCE_DIR}/titancore/vision/*.cpp"
-    "${CMAKE_SOURCE_DIR}/titancore/retrieval/*.cpp"
-    "${CMAKE_SOURCE_DIR}/titancore/distributed/*.cpp"
-    "${CMAKE_SOURCE_DIR}/titancore/safety/*.cpp"
-    "${CMAKE_SOURCE_DIR}/titancore/api/*.cpp"
-    "${CMAKE_SOURCE_DIR}/titancore/monitoring/*.cpp"
-    "${CMAKE_SOURCE_DIR}/titancore/tools/*.cpp"
+set(SOURCES
+    main.cpp
+    Core-1/core/model/gpt.cpp
+    Core-1/core/dataloader/dataset.cpp
+    Core-1/distributed/nccl.cpp
+    Core-1/distributed/fsdp.cpp
+    Core-1/core/optimizer/zero.cpp
+    Core-1/core/model/kv_cache_paged.cpp
+    Core-1/safety/moderation.cpp
+    Core-1/logging/audit.cpp
 )
 
 # -------------------------------
-# 5. Executable
+# 4. Executable
 # -------------------------------
-add_executable(titancore main.cpp ${CORE_SRC})
+add_executable(titancore ${SOURCES})
 
 # -------------------------------
-# 6. Include Directories
+# 5. Include Directories
 # -------------------------------
 target_include_directories(titancore PRIVATE
-    "${CMAKE_SOURCE_DIR}/titancore/core"
-    "${CMAKE_SOURCE_DIR}/titancore/core/model"
-    "${CMAKE_SOURCE_DIR}/titancore/core/transformer"
-    "${CMAKE_SOURCE_DIR}/titancore/core/quant"
-    "${CMAKE_SOURCE_DIR}/titancore/audio"
-    "${CMAKE_SOURCE_DIR}/titancore/vision"
-    "${CMAKE_SOURCE_DIR}/titancore/retrieval"
-    "${CMAKE_SOURCE_DIR}/titancore/distributed"
-    "${CMAKE_SOURCE_DIR}/titancore/safety"
-    "${CMAKE_SOURCE_DIR}/titancore/api"
-    "${CMAKE_SOURCE_DIR}/titancore/monitoring"
-    "${CMAKE_SOURCE_DIR}/titancore/tools"
+    ${CMAKE_SOURCE_DIR}                
+    ${TORCH_INCLUDE_DIRS}
+    ${CUDA_INCLUDE_DIRS}
+    ${MPI_INCLUDE_PATH}
 )
 
 # -------------------------------
-# 7. Link Libraries
+# 6. Link Libraries
 # -------------------------------
-target_link_libraries(titancore "${TORCH_LIBRARIES}")
-set_property(TARGET titancore PROPERTY CXX_STANDARD 17)
+target_link_libraries(titancore 
+    ${TORCH_LIBRARIES} 
+    ${CUDA_LIBRARIES}
+    ${MPI_LIBRARIES}
+    ${NCCL_LIBRARY}
+)
 
 # -------------------------------
-# 8. CUDA Properties
+# 7. CUDA & Compiler Properties for 1T Model
 # -------------------------------
 set_target_properties(titancore PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
     POSITION_INDEPENDENT_CODE ON
+)
+
+target_compile_options(titancore PRIVATE 
+    $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>
+    $<$<COMPILE_LANGUAGE:CUDA>:--ftz=true>
 )

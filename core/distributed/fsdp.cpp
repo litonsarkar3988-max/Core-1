@@ -8,10 +8,12 @@
 
 /*
 =====================================================
-  TITANCORE: ADVANCED FSDP & PIPELINE MANAGER
+  TITANCORE: ULTRA FSDP & PIPELINE MANAGER (1T+)
 =====================================================
-  Handles parameter sharding and gradient
-  synchronization across GPUs using NCCL.
+  Features:
+  - ZeRO-3 Parameter Sharding (Scatter/Gather)
+  - Reduce-Scatter Gradient Synchronization
+  - Pipeline Stage Communication Hooks
 =====================================================
 */
 
@@ -19,89 +21,107 @@ struct TitanFSDPManager {
     int rank, world_size;
     int pipeline_rank, pipeline_world_size;
     ncclComm_t comm;
+    cudaStream_t stream;
 
     TitanFSDPManager(const TitanConfig& cfg, ncclComm_t c) : comm(c) {
-        // NCCL গ্রুপ থেকে র‍্যাঙ্ক এবং ওয়ার্ল্ড সাইজ নেওয়া
         rank = torch::distributed::get_rank();
         world_size = torch::distributed::get_world_size();
+        stream = at::cuda::getCurrentCUDAStream();
         
-        // 1. Pipeline Parallelism Calculation
-        pipeline_world_size = cfg.pipeline_parallel_size; // YAML: 2
+        // 1. Pipeline Stage Assignment
+        pipeline_world_size = cfg.pipeline_parallel_size;
         int gpus_per_stage = world_size / pipeline_world_size;
-        
-        // প্রতিটি GPU কোন পাইপলাইন স্টেজে আছে তা নির্ধারণ করা
         pipeline_rank = rank / gpus_per_stage;
 
-        std::cout << "[TitanCore] FSDP Initialized. Rank: " << rank 
-                  << " | Pipeline Stage: " << pipeline_rank << std::endl;
+        if (rank == 0) {
+            std::cout << "[TitanCore] Ultra FSDP Initialized." << std::endl;
+        }
     }
 
-    // 
     
-    /* shard parameter tensor (Enhanced to support Sharded Weights) */
+
+    // --- ZeRO-3: Parameter Sharding Logic ---
+
+    /* Shard full weight and keep only local portion to save VRAM */
     torch::Tensor shard_weight(torch::Tensor full) {
         auto total = full.numel();
+        auto shard_size = (total + world_size - 1) / world_size;
         
-        // নিশ্চিত করা যে টেনসরটি ওয়ার্ল্ড সাইজ দিয়ে বিভাজ্য
-        if (total % world_size != 0) {
-            throw std::runtime_error("Tensor size must be divisible by world size for FSDP.");
-        }
-        
-        auto shard_size = total / world_size; 
-        auto local = torch::zeros({shard_size}, full.options().device(torch::kCUDA));
+        // Allocate sharded buffer
+        auto local_shard = torch::empty({shard_size}, full.options().device(torch::kCUDA));
 
-        // NCCL Scatter ব্যবহার করে পুরো মডেলের ওয়েট শার্ড করা
+        // NCCL Scatter: Full weight -> GPU Shards
         ncclScatter(
             full.data_ptr(),
-            local.data_ptr(),
+            local_shard.data_ptr(),
             shard_size,
-            ncclFloat16, // Ultra-scale-এর জন্য Float16 বা BFloat16 ব্যবহার করা উচিত
+            ncclFloat16,
             0,
             comm,
-            at::cuda::getCurrentCUDAStream()
+            stream
         );
 
-        return local;
+        return local_shard;
     }
 
-    /* gather full weight before forward pass */
-    torch::Tensor gather_weight(torch::Tensor local) {
-        auto full = torch::zeros({local.numel() * world_size}, local.options().device(torch::kCUDA));
-
-        // NCCL AllGather ব্যবহার করে সব শার্ড একত্রিত করা
-        ncclAllGather(
-            local.data_ptr(),
-            full.data_ptr(),
-            local.numel(),
-            ncclFloat16,
-            comm,
-            at::cuda::getCurrentCUDAStream()
-        );
-
-        return full;
+    /* All-Gather: Collect shards from all GPUs before Forward Pass */
+    void all_gather_parameters(torch::nn::ModuleList& layers, std::vector<torch::Tensor>& shards) {
+        int shard_idx = 0;
+        for (auto& layer : layers) {
+            for (auto& p : layer->parameters()) {
+                if (!p.defined()) continue;
+                
+                // NCCL AllGather: Shards -> Full Weights
+                ncclAllGather(
+                    shards[shard_idx].data_ptr(),
+                    p.data_ptr(),
+                    shards[shard_idx].numel(),
+                    ncclFloat16,
+                    comm,
+                    stream
+                );
+                shard_idx++;
+            }
+        }
     }
 
-    // 
-    
-    /* Synchronize gradients across all GPUs */
-    void synchronize_gradients(torch::nn::ModuleList& model_layers) {
-        for (auto& layer : model_layers) {
-            for (auto& param : layer->parameters()) {
-                if (param.grad().defined()) {
-                    // All-Reduce gradients to synchronize them
-                    ncclAllReduce(
-                        param.grad().data_ptr(),
-                        param.grad().data_ptr(),
-                        param.grad().numel(),
+    // --- ZeRO-2: Gradient Optimization ---
+
+    /* Reduce-Scatter: Only store the gradient shard that matches the parameter shard */
+    void reduce_scatter_gradients(torch::nn::ModuleList& layers) {
+        for (auto& layer : layers) {
+            for (auto& p : layer->parameters()) {
+                if (p.grad().defined()) {
+                    auto grad = p.grad();
+                    auto shard_size = grad.numel() / world_size;
+
+                    // Reduce-Scatter: Aggregate grads across GPUs but store only the 1/N portion
+                    ncclReduceScatter(
+                        grad.data_ptr(),
+                        grad.data_ptr(), // In-place reduction to its local shard
+                        shard_size,
                         ncclFloat16,
                         ncclSum,
                         comm,
-                        at::cuda::getCurrentCUDAStream()
+                        stream
                     );
-                    // Average the gradients by dividing by world size
-                    param.grad().div_(world_size);
+                    
+                    // Division by world size for average
+                    grad.div_(world_size);
                 }
             }
         }
+    }
+
+    
+
+    // --- Pipeline Communication (Placeholder for 3D Parallelism) ---
+
+    void send_hidden_state(torch::Tensor x, int target_rank) {
+        ncclSend(x.data_ptr(), x.numel(), ncclFloat16, target_rank, comm, stream);
+    }
+
+    void receive_hidden_state(torch::Tensor x, int source_rank) {
+        ncclRecv(x.data_ptr(), x.numel(), ncclFloat16, source_rank, comm, stream);
     }
 };

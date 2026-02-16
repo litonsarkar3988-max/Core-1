@@ -1,18 +1,4 @@
-TitanCore 🚀
 
-
-
-
-
-TitanCore is a lightweight, high-performance modular AI inference engine designed for multimodal capabilities (Text, Vision, and Audio).
-
-> 💡 Fun Fact:
-This engine was entirely architected and developed on a mobile device.
-
-
-
-
----
 
 ⚠️ Project Status & Tokenization
 
@@ -30,80 +16,75 @@ Specialized fast GPU inference (not trillion-token model)
 
 ---
 
-🏗️ System Architecture
+# 🚀 TitanCore: Core-1 (Next-Gen Distributed Neural Engine)
+### "Empowering Sovereign AI with Trillion-Parameter Scalability"
 
-Core-1/
-├── core/                        # Neural brain
-│   ├── model/
-│   │   ├── gpt.cpp             # Transformer decoder
-│   │   ├── attention.cu        # FlashAttention CUDA kernel
-│   │   ├── block.cpp           # Transformer blocks
-│   │   ├── embedding.cpp       # Token + position embedding
-│   │   ├── kv_cache.cpp        # KV memory
-│   │   └── sampler.cpp         # top-k / top-p / temp
-│   │
-│   ├── tokenizer/
-│   │   ├── sentencepiece.cpp
-│   │   ├── vocab.json
-│   │   └── merges.txt
-│   │
-│   ├── vision/                 # multimodal
-│   │   ├── vit.cpp             # vision transformer
-│   │   └── clip.cpp
-│   │
-│   ├── audio/
-│   │   ├── whisper.cpp
-│   │   └── mel.cpp
-│   │
-│   └── runtime/
-│       ├── engine.cpp          # inference engine
-│       ├── scheduler.cpp       # batching
-│       └── memory.cpp          # VRAM manager
-│
-├── distributed/
-│   ├── nccl.cpp                # tensor parallel
-│   ├── fsdp.cpp                # shard weights
-│   └── mpi.cpp
-│
-├── quant/
-│   ├── int8.cpp
-│   ├── int4.cpp
-│   └── fp8.cpp
-│
-├── retrieval/                  # RAG
-│   ├── faiss.cpp
-│   ├── embedder.cpp
-│   └── loader.cpp
-│
-├── safety/
-│   ├── moderation.cpp
-│   ├── jailbreak.cpp
-│   └── rate_limit.cpp
-│
-├── api/
-│   ├── server.cpp              # REST / gRPC
-│   ├── routes.cpp
-│   └── auth.cpp
-│
-├── monitoring/
-│   ├── prometheus.cpp
-│   └── metrics.cpp
-│
-├── tools/
-│   ├── convert_weights.py
-│   ├── benchmark.cpp
-│   └── profiler.cpp
-│
-├── configs/
-│   ├── gpt4o.yaml
-│   ├── cluster.yaml
-│   └── safety.yaml
-│
-├── weights/
-│   └── titancore.gguf
-│
-├── main.cpp                    # system bootstrap
-└── CMakeLists.txt
+TitanCore **Core-1** is an ultra-scalable, distributed neural network architecture designed to handle models up to **1 Trillion parameters**. This project stands as a testament to the fact that **innovation is not limited by hardware, but by the strength of one's will.**
+
+---
+
+## 🏗️ The Mobile-First Revolution (Hardware & Tools)
+Breaking the myth that AI development requires high-end workstations, this entire trillion-parameter capable engine was architected and coded on a mobile device:
+
+* **Development Device:** Vivo 1816 (Smartphone)
+* **Environment:** [Termux](https://termux.dev/) (Terminal Emulator)
+* **Code Editor:** [Acode](https://acode.app/) (Android IDE)
+* **Initial Release:** 8th February 2026 (Uploaded to GitHub)
+
+---
+
+## 🗺️ High-Level Blueprint
+The architecture focuses on a decentralized processing model, ensuring that massive computational loads are sharded effectively.
+
+![TitanCore Architecture](core_1_diagram.JPG)
+
+---
+
+## 🏗️ Technical Architecture Details
+
+### 1. 120-Layer Transformer Backbone
+The engine utilizes a deep **Transformer architecture** featuring 120 layers. It is optimized for:
+* **High-Speed Reasoning:** Minimized latency in token generation.
+* **Deep Logic Processing:** Enhanced neural pathways for complex problem solving.
+
+### 2. 4D Parallelism & TitanZero-3
+* **4D Parallelism:** Seamlessly integrates Data, Pipeline, Tensor, and Expert parallelism.
+* **TitanZero-3 (VRAM Optimizer):** Based on ZeRO-3 protocols, it shards optimizer states and parameters, allowing the design of massive models even in memory-constrained environments.
+
+### 3. Advanced Memory Management
+* **Paged KV Cache:** Eliminates memory fragmentation during long-context inference.
+* **mmap Data Loading:** Directly maps `.safetensors` or `.bin` weights from storage to save active RAM.
+
+---
+
+## 📂 Project Components & Structure
+| Component | Responsibility | Technical Stack |
+| :--- | :--- | :--- |
+| **Main Orchestrator** | Node synchronization & Global state | `main.cpp` |
+| **Neural Engine** | Forward/Backward propagation logic | `engine.cpp` |
+| **CUDA Kernels** | Optimized low-level matrix operations | `attention.cu` |
+| **Safety Guard** | Jailbreak protection & Bias mitigation | `prometheus_guard.cpp` |
+
+---
+
+## 🌟 A Message to Every Dreamer
+> **"You don't need expensive gear or high-end servers to build something great. If you have the passion and the grit, you can architect world-class technology using just a basic smartphone and Termux. Limitations exist only in the mind, not in the tools we hold."**
+
+---
+
+## 🛡️ Vision & Roadmap
+The mission of **TitanCore** is to establish a sovereign AI infrastructure for technological independence.
+
+* [x] **Phase 1:** Core-1 Engine Architecture (Released 8 Feb 2026).
+* [ ] **Phase 2:** Multi-modal Integration (Vision, Audio, and Text).
+* [ ] **Phase 3:** Scaling to Global Distributed GPU Clusters.
+
+---
+
+## 👨‍💻 Lead Developer
+**Rahul**
+*AI Systems Architect & Researcher*
+
 
 
 ---
